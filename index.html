@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคำนวณและวิเคราะห์แผนภูมิควบคุมคุณภาพ (Quality Control Dashboard)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f8fafc;
+        }
+        .table-input:focus {
+            outline: 2px solid #2563eb;
+            background-color: #eff6ff;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2.5 rounded-xl shadow-md">
+                    <i data-lucide="activity" class="w-7 h-7 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">SQC Dashboard : แผนภูมิควบคุมคุณภาพ</h1>
+                    <p class="text-xs text-slate-400">อ้างอิง บทที่ 7 การควบคุมคุณภาพ (รศ.กวี หวังนิเวศน์กุล - ม.เอเชียอาคเนย์)</p>
+                </div>
+            </div>
+            <!-- Quick Preset Actions -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="loadHomework7Preset()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> โหลดการบ้านข้อ 7 (n=3)
+                </button>
+                <button onclick="loadExample3Preset()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> โหลดตัวอย่างที่ 3 (n=5)
+                </button>
+                <button onclick="resetToEmpty()" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> ล้างข้อมูล
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+
+        <!-- Top Controls & Configurations -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col md:flex-row items-md-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">ขนาดกลุ่มตัวอย่าง (n)</label>
+                    <select id="subgroupSizeSelect" onchange="changeSubgroupSize(this.value)" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 font-semibold">
+                        <option value="2">n = 2</option>
+                        <option value="3" selected>n = 3 (การบ้านข้อ 7)</option>
+                        <option value="4">n = 4</option>
+                        <option value="5">n = 5 (ตัวอย่างที่ 3)</option>
+                        <option value="6">n = 6</option>
+                        <option value="7">n = 7</option>
+                        <option value="8">n = 8</option>
+                        <option value="9">n = 9</option>
+                        <option value="10">n = 10</option>
+                    </select>
+                </div>
+                <div class="border-l border-slate-200 pl-4">
+                    <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">ตัวแปรตารางมาตรฐาน</span>
+                    <div class="flex items-center space-x-3 text-sm font-semibold text-slate-700">
+                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-md border border-blue-200">A₂ = <span id="factorA2">1.023</span></span>
+                        <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-md border border-slate-200">D₃ = <span id="factorD3">0</span></span>
+                        <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-md border border-slate-200">D₄ = <span id="factorD4">2.575</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button onclick="addRow()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition shadow flex items-center gap-1.5">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มแถวกลุ่มสินค้า
+                </button>
+            </div>
+        </div>
+
+        <!-- Calculation Summary Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Grand Mean Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ค่าเฉลี่ยรวม (Grand Mean: X̄̄)</p>
+                        <h3 id="grandMeanText" class="text-2xl font-bold text-slate-800 mt-1">155.83</h3>
+                        <p class="text-xs text-slate-400 mt-1">สูตร: X̄̄ = ΣX̄ / k</p>
+                    </div>
+                    <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mean Range Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ค่าพิสัยเฉลี่ย (Mean Range: R̄)</p>
+                        <h3 id="meanRangeText" class="text-2xl font-bold text-slate-800 mt-1">3.75</h3>
+                        <p class="text-xs text-slate-400 mt-1">สูตร: R̄ = ΣR / k</p>
+                    </div>
+                    <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <i data-lucide="trending-up" class="w-5 h-5"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- X-bar Chart Limits Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ขอบเขตควบคุม X̄-Chart</p>
+                        <div class="mt-2 space-y-0.5 text-sm font-medium">
+                            <p class="text-emerald-700 flex justify-between gap-4"><span>UCL:</span> <span id="uclXText" class="font-bold">159.67</span></p>
+                            <p class="text-slate-600 flex justify-between gap-4"><span>CL (X̄̄):</span> <span id="clXText" class="font-bold">155.83</span></p>
+                            <p class="text-rose-700 flex justify-between gap-4"><span>LCL:</span> <span id="lclXText" class="font-bold">151.99</span></p>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-rose-50 text-rose-600 rounded-xl">
+                        <i data-lucide="sliders" class="w-5 h-5"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- R Chart Limits Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ขอบเขตควบคุม R-Chart</p>
+                        <div class="mt-2 space-y-0.5 text-sm font-medium">
+                            <p class="text-amber-700 flex justify-between gap-4"><span>UCL:</span> <span id="uclRText" class="font-bold">9.66</span></p>
+                            <p class="text-slate-600 flex justify-between gap-4"><span>CL (R̄):</span> <span id="clRText" class="font-bold">3.75</span></p>
+                            <p class="text-amber-900 flex justify-between gap-4"><span>LCL:</span> <span id="lclRText" class="font-bold">0.00</span></p>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                        <i data-lucide="git-commit" class="w-5 h-5"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quality Status Diagnostic Banner -->
+        <div id="diagnosticBanner" class="p-4 rounded-2xl border transition-all duration-300 flex items-start gap-3 bg-emerald-50 border-emerald-200 text-emerald-900">
+            <i id="diagnosticIcon" data-lucide="check-circle-2" class="w-6 h-6 text-emerald-600 shrink-0 mt-0.5"></i>
+            <div>
+                <h4 id="diagnosticTitle" class="font-bold text-base">กระบวนการผลิตอยู่ในเกณฑ์ควบคุมปกติ (In Control)</h4>
+                <p id="diagnosticDesc" class="text-xs mt-1 text-emerald-800">จุดข้อมูลทั้งหมดอยู่ภายในขอบเขตควบคุม (Control Limits) และไม่พบลักษณะการจัดวางตัวที่ผิดปกติ เช่น Run หรือ Trend</p>
+            </div>
+        </div>
+
+        <!-- Main Layout: Table + Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- Data Table Column (Enlarged to 7 cols on lg/xl for better data editing) -->
+            <div class="lg:col-span-6 xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="table" class="w-5 h-5 text-blue-600"></i>
+                        ตารางบันทึกข้อมูลตัวอย่าง
+                    </h3>
+                    <span id="rowCountBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-200">12 กลุ่ม</span>
+                </div>
+
+                <!-- Table Container with Scroll -->
+                <div class="overflow-x-auto max-h-[620px] overflow-y-auto border border-slate-200 rounded-xl shadow-inner">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead class="text-xs uppercase bg-slate-100 text-slate-700 sticky top-0 z-10 shadow-sm font-bold">
+                            <tr id="tableHeaderRow">
+                                <th class="p-3 text-center border-b border-slate-200 min-w-[65px]">กลุ่มที่</th>
+                                <th class="p-3 text-center border-b border-slate-200 min-w-[85px]">รอบ 1</th>
+                                <th class="p-3 text-center border-b border-slate-200 min-w-[85px]">รอบ 2</th>
+                                <th class="p-3 text-center border-b border-slate-200 min-w-[85px]">รอบ 3</th>
+                                <th class="p-3 text-center border-b border-slate-200 bg-blue-50 text-blue-900 font-bold min-w-[95px]">ค่าเฉลี่ย (X̄)</th>
+                                <th class="p-3 text-center border-b border-slate-200 bg-amber-50 text-amber-900 font-bold min-w-[95px]">ค่าพิสัย (R)</th>
+                                <th class="p-3 text-center border-b border-slate-200 w-12">#</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-200 bg-white text-sm font-medium">
+                            <!-- Rows rendered via JS -->
+                        </tbody>
+                        <tfoot class="bg-slate-100 font-bold text-slate-800 sticky bottom-0 z-10 border-t-2 border-slate-300 text-sm">
+                            <tr>
+                                <td class="p-3 text-center">รวม (Σ)</td>
+                                <td id="sumColsFooter" colspan="3" class="p-3 text-center text-slate-400 font-normal italic text-xs">-</td>
+                                <td id="sumXBarFooter" class="p-3 text-center text-blue-700 font-bold bg-blue-50/80">1870.00</td>
+                                <td id="sumRFooter" class="p-3 text-center text-amber-700 font-bold bg-amber-50/80">45.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <span>* สามารถคลิกช่องตัวเลขเพื่อแก้ไขข้อมูล ระบบจะคำนวณและอัปเดตกราฟทันที</span>
+                    <span class="font-mono font-semibold bg-slate-100 px-2 py-0.5 rounded text-slate-700">สูตรพิสัย: R = Xmax - Xmin</span>
+                </div>
+            </div>
+
+            <!-- Charts Column (5-6 cols on lg/xl) -->
+            <div class="lg:col-span-6 xl:col-span-5 space-y-6">
+
+                <!-- X-Bar Chart Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>
+                                แผนภูมิควบคุมค่าเฉลี่ย (X̄-Chart)
+                            </h3>
+                            <p class="text-xs text-slate-400">แสดงการกระจายตัวของค่าเฉลี่ยในแต่ละกลุ่มสินค้า</p>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[250px]">
+                        <canvas id="xBarChartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- R Chart Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span>
+                                แผนภูมิควบคุมค่าพิสัย (R-Chart)
+                            </h3>
+                            <p class="text-xs text-slate-400">แสดงการกระจายตัวของความผันผวน (Range) ภายในแต่ละกลุ่ม</p>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[250px]">
+                        <canvas id="rChartCanvas"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Theoretical Reference Accordion / Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 border-b border-slate-200 pb-3">
+                <i data-lucide="book-open" class="w-5 h-5 text-blue-600"></i>
+                สรุปสูตรคำนวณและทฤษฎีอ้างอิง (บทที่ 7 การควบคุมคุณภาพ)
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs leading-relaxed text-slate-600">
+                <!-- Box 1 -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                    <h4 class="font-bold text-slate-800 text-sm text-blue-700">1. การคำนวณแผนภูมิควบคุม (X̄ - R)</h4>
+                    <p>• <strong>ค่าเฉลี่ยกลุ่ม (X̄):</strong> ผลรวมข้อมูลในกลุ่ม หารด้วย n</p>
+                    <p>• <strong>ค่าพิสัยกลุ่ม (R):</strong> Xmax - Xmin ในกลุ่มนั้นๆ</p>
+                    <p>• <strong>ค่าเฉลี่ยรวม (X̄̄):</strong> ΣX̄ / k (เมื่อ k คือจำนวนกลุ่ม)</p>
+                    <p>• <strong>ขอบเขต X̄-Chart:</strong> UCL, LCL = X̄̄ ± (A₂ × R̄)</p>
+                    <p>• <strong>ขอบเขต R-Chart:</strong> UCL = D₄ × R̄, LCL = D₃ × R̄</p>
+                </div>
+
+                <!-- Box 2 -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                    <h4 class="font-bold text-slate-800 text-sm text-amber-700">2. การตีความสิ่งผิดปกติ (Interpretation Rules)</h4>
+                    <p>• <strong>Out of Control:</strong> มีจุดหลุดออกนอกเส้น UCL หรือ LCL</p>
+                    <p>• <strong>Run:</strong> มีจุดอยู่ฝั่งเดียวกันของเส้นเฉลี่ยต่อเนื่องกันตั้งแต่ 7 จุดขึ้นไป</p>
+                    <p>• <strong>Trend:</strong> มีจุดเพิ่มขึ้น หรือลดลงต่อเนื่องกัน 7 จุดติดกัน</p>
+                    <p>• <strong>สาเหตุจำเพาะ (Special Causes):</strong> เกิดจากปัจจัยที่ยอมรับไม่ได้ เช่น เครื่องจักรขัดข้อง พนักงาน หรือวัตถุดิบไม่ได้มาตรฐาน ต้องรีบแก้ไข</p>
+                </div>
+
+                <!-- Box 3 -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                    <h4 class="font-bold text-slate-800 text-sm text-emerald-700">3. สุ่มตัวอย่างมาตรฐาน (MIL-STD & JIS)</h4>
+                    <p>• <strong>AQL (Acceptable Quality Level):</strong> ระดับคุณภาพเฉลี่ยที่ยอมรับได้ (ความเสี่ยงผู้ผลิต α = 5%)</p>
+                    <p>• <strong>LTPD (Lot Tolerance Percent Defective):</strong> ระดับคุณภาพที่ยอมให้ (ความเสี่ยงผู้ใช้/ลูกค้า β = 10%)</p>
+                    <p>• <strong>OC Curve:</strong> กราฟคุณลักษณะแสดงโอกาสที่สินค้าจะผ่านการทดสอบ</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-6 mt-12 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-1">
+            <p>พัฒนาขึ้นสำหรับการเรียนการสอนวิชาการควบคุมคุณภาพ - Master of Engineering in Construction Management</p>
+            <p class="text-slate-500">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยเอเชียอาคเนย์ (SAU) | ผู้สอน: รศ.กวี หวังนิเวศน์กุล</p>
+        </div>
+    </footer>
+
+    <script>
+        // Standard Control Chart Factors Table (from page 18 of PDF)
+        const CONTROL_FACTORS = {
+            2: { A2: 1.880, D3: 0, D4: 3.267 },
+            3: { A2: 1.023, D3: 0, D4: 2.575 },
+            4: { A2: 0.729, D3: 0, D4: 2.282 },
+            5: { A2: 0.577, D3: 0, D4: 2.115 },
+            6: { A2: 0.483, D3: 0, D4: 2.004 },
+            7: { A2: 0.419, D3: 0.076, D4: 1.924 },
+            8: { A2: 0.373, D3: 0.136, D4: 1.864 },
+            9: { A2: 0.337, D3: 0.184, D4: 1.816 },
+            10: { A2: 0.308, D3: 0.223, D4: 1.777 }
+        };
+
+        // Preset Datasets from Document
+        // Homework 7 Dataset (Page 22): 12 days, n=3
+        const HW7_DATA = [
+            [155, 161, 156],
+            [156, 157, 155],
+            [154, 154, 156],
+            [158, 158, 156],
+            [159, 158, 157],
+            [156, 154, 153],
+            [155, 157, 157],
+            [157, 159, 161],
+            [159, 153, 152],
+            [153, 152, 151],
+            [159, 159, 161],
+            [151, 154, 149]
+        ];
+
+        // Example 3 Dataset (Page 17): 25 days, n=5
+        const EX3_DATA = [
+            [14.0, 12.6, 13.2, 13.1, 12.1],
+            [13.2, 13.3, 12.7, 13.4, 12.1],
+            [13.5, 12.8, 13.0, 12.8, 12.4],
+            [13.9, 12.4, 13.3, 13.1, 13.2],
+            [13.0, 13.0, 12.1, 12.2, 13.3],
+            [13.7, 12.0, 12.5, 12.4, 13.0],
+            [13.9, 12.1, 12.7, 13.4, 13.0],
+            [13.4, 13.6, 13.0, 12.4, 13.5],
+            [14.4, 12.4, 12.2, 12.4, 12.5],
+            [13.3, 12.4, 12.6, 12.9, 12.8],
+            [13.3, 12.8, 13.0, 13.0, 13.1],
+            [13.6, 12.5, 13.3, 13.5, 12.8],
+            [13.4, 13.3, 12.0, 13.0, 13.1],
+            [13.9, 13.1, 13.5, 12.6, 12.8],
+            [14.2, 12.7, 12.9, 12.9, 12.5],
+            [13.6, 12.6, 12.4, 12.5, 12.2],
+            [14.0, 13.2, 12.4, 13.0, 13.0],
+            [13.1, 12.9, 13.5, 12.3, 12.8],
+            [13.7, 14.6, 13.4, 12.2, 12.5],
+            [13.9, 13.0, 13.0, 13.2, 12.6],
+            [13.3, 12.7, 12.6, 12.8, 12.7],
+            [13.9, 12.4, 12.7, 12.4, 12.8],
+            [13.2, 12.3, 12.6, 13.1, 12.7],
+            [13.2, 12.8, 12.8, 12.3, 12.6],
+            [13.3, 12.8, 12.0, 12.3, 12.2]
+        ];
+
+        // Global State Variables
+        let currentN = 3;
+        let tableData = []; // Array of arrays: [[v1, v2, v3], ...]
+        let xBarChartInstance = null;
+        let rChartInstance = null;
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initCharts();
+            loadHomework7Preset(); // Default start with Homework 7
+        });
+
+        function initCharts() {
+            const ctxX = document.getElementById('xBarChartCanvas').getContext('2d');
+            const ctxR = document.getElementById('rChartCanvas').getContext('2d');
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { boxWidth: 12, font: { family: 'Kanit', size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'Kanit', size: 11 } },
+                        title: { display: true, text: 'กลุ่มที่ (Subgroup)', font: { family: 'Kanit', size: 11 } }
+                    },
+                    y: {
+                        ticks: { font: { family: 'Kanit', size: 11 } },
+                        title: { display: true, font: { family: 'Kanit', size: 11 } }
+                    }
+                }
+            };
+
+            // X-Bar Chart Instance
+            xBarChartInstance = new Chart(ctxX, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'ค่าเฉลี่ย (X̄)', data: [], borderColor: '#2563eb', backgroundColor: '#2563eb', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2 },
+                        { label: 'UCL', data: [], borderColor: '#ef4444', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5, fill: false },
+                        { label: 'CL (X̄̄)', data: [], borderColor: '#10b981', pointRadius: 0, borderWidth: 1.5, fill: false },
+                        { label: 'LCL', data: [], borderColor: '#ef4444', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5, fill: false }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: 'ค่าเฉลี่ย (X̄)', font: { family: 'Kanit', size: 11 } } }
+                    }
+                }
+            });
+
+            // R Chart Instance
+            rChartInstance = new Chart(ctxR, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'ค่าพิสัย (R)', data: [], borderColor: '#4f46e5', backgroundColor: '#4f46e5', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2 },
+                        { label: 'UCL', data: [], borderColor: '#f59e0b', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5, fill: false },
+                        { label: 'CL (R̄)', data: [], borderColor: '#10b981', pointRadius: 0, borderWidth: 1.5, fill: false },
+                        { label: 'LCL', data: [], borderColor: '#f59e0b', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5, fill: false }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: 'ค่าพิสัย (R)', font: { family: 'Kanit', size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        // Preset Loaders
+        function loadHomework7Preset() {
+            currentN = 3;
+            document.getElementById('subgroupSizeSelect').value = '3';
+            tableData = JSON.parse(JSON.stringify(HW7_DATA));
+            rebuildTableHeader();
+            renderTable();
+            recalculateAndUpdate();
+        }
+
+        function loadExample3Preset() {
+            currentN = 5;
+            document.getElementById('subgroupSizeSelect').value = '5';
+            tableData = JSON.parse(JSON.stringify(EX3_DATA));
+            rebuildTableHeader();
+            renderTable();
+            recalculateAndUpdate();
+        }
+
+        function resetToEmpty() {
+            tableData = [new Array(currentN).fill(0)];
+            renderTable();
+            recalculateAndUpdate();
+        }
+
+        function changeSubgroupSize(newN) {
+            currentN = parseInt(newN);
+            // Adjust existing tableData rows to match new size N
+            tableData = tableData.map(row => {
+                if (row.length < currentN) {
+                    const extended = [...row];
+                    while (extended.length < currentN) extended.push(0);
+                    return extended;
+                } else {
+                    return row.slice(0, currentN);
+                }
+            });
+
+            rebuildTableHeader();
+            renderTable();
+            recalculateAndUpdate();
+        }
+
+        function rebuildTableHeader() {
+            const headerRow = document.getElementById('tableHeaderRow');
+            let colsHtml = `<th class="p-3 text-center border-b border-slate-200 min-w-[65px]">กลุ่มที่</th>`;
+            for (let i = 1; i <= currentN; i++) {
+                colsHtml += `<th class="p-3 text-center border-b border-slate-200 min-w-[85px]">รอบ ${i}</th>`;
+            }
+            colsHtml += `
+                <th class="p-3 text-center border-b border-slate-200 bg-blue-50 text-blue-900 font-bold min-w-[95px]">ค่าเฉลี่ย (X̄)</th>
+                <th class="p-3 text-center border-b border-slate-200 bg-amber-50 text-amber-900 font-bold min-w-[95px]">ค่าพิสัย (R)</th>
+                <th class="p-3 text-center border-b border-slate-200 w-12">#</th>
+            `;
+            headerRow.innerHTML = colsHtml;
+
+            // Adjust Footer Colspan
+            document.getElementById('sumColsFooter').colSpan = currentN;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            tableData.forEach((rowValues, rowIndex) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50/40 transition border-b border-slate-200";
+
+                let cellsHtml = `<td class="p-2.5 text-center font-bold text-slate-700 bg-slate-50">${rowIndex + 1}</td>`;
+
+                rowValues.forEach((val, colIndex) => {
+                    cellsHtml += `
+                        <td class="p-1.5">
+                            <input type="number" step="any" value="${val}"
+                                oninput="updateCellValue(${rowIndex}, ${colIndex}, this.value)"
+                                class="table-input w-full p-2 text-center text-sm font-semibold font-mono rounded-lg border border-slate-300 focus:border-blue-600 bg-white shadow-sm transition" />
+                        </td>
+                    `;
+                });
+
+                // Calculated X-bar & R per row
+                cellsHtml += `
+                    <td id="rowXBar_${rowIndex}" class="p-2.5 text-center font-mono font-bold text-sm text-blue-800 bg-blue-50/50">0.00</td>
+                    <td id="rowR_${rowIndex}" class="p-2.5 text-center font-mono font-bold text-sm text-amber-800 bg-amber-50/50">0.00</td>
+                    <td class="p-1.5 text-center">
+                        <button onclick="removeRow(${rowIndex})" class="p-1.5 text-slate-400 hover:text-rose-600 transition hover:bg-rose-50 rounded-lg" title="ลบแถว">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+
+                tr.innerHTML = cellsHtml;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('rowCountBadge').textContent = `${tableData.length} กลุ่ม`;
+            lucide.createIcons();
+        }
+
+        function updateCellValue(rowIndex, colIndex, val) {
+            const parsed = parseFloat(val);
+            tableData[rowIndex][colIndex] = isNaN(parsed) ? 0 : parsed;
+            recalculateAndUpdate();
+        }
+
+        function addRow() {
+            const lastRow = tableData.length > 0 ? tableData[tableData.length - 1] : new Array(currentN).fill(10);
+            tableData.push([...lastRow]); // duplicate last row for easy entry
+            renderTable();
+            recalculateAndUpdate();
+        }
+
+        function removeRow(rowIndex) {
+            if (tableData.length <= 1) {
+                return; // maintain at least 1 row
+            }
+            tableData.splice(rowIndex, 1);
+            renderTable();
+            recalculateAndUpdate();
+        }
+
+        function recalculateAndUpdate() {
+            const factors = CONTROL_FACTORS[currentN] || CONTROL_FACTORS[3];
+            document.getElementById('factorA2').textContent = factors.A2.toFixed(3);
+            document.getElementById('factorD3').textContent = factors.D3;
+            document.getElementById('factorD4').textContent = factors.D4.toFixed(3);
+
+            let sumXBar = 0;
+            let sumR = 0;
+            const xBarList = [];
+            const rList = [];
+
+            // Calculate for each row
+            tableData.forEach((row, idx) => {
+                const sum = row.reduce((a, b) => a + b, 0);
+                const xBar = sum / currentN;
+                const max = Math.max(...row);
+                const min = Math.min(...row);
+                const r = max - min;
+
+                xBarList.push(xBar);
+                rList.push(r);
+
+                sumXBar += xBar;
+                sumR += r;
+
+                // Update Row cells in DOM if exists
+                const elX = document.getElementById(`rowXBar_${idx}`);
+                const elR = document.getElementById(`rowR_${idx}`);
+                if (elX) elX.textContent = xBar.toFixed(2);
+                if (elR) elR.textContent = r.toFixed(2);
+            });
+
+            const k = tableData.length;
+            const grandMean = sumXBar / k; // X-doublebar
+            const meanRange = sumR / k;   // R-bar
+
+            // Calculate Control Limits
+            const uclX = grandMean + (factors.A2 * meanRange);
+            const lclX = grandMean - (factors.A2 * meanRange);
+
+            const uclR = factors.D4 * meanRange;
+            const lclR = factors.D3 * meanRange;
+
+            // Update Cards in UI
+            document.getElementById('grandMeanText').textContent = grandMean.toFixed(2);
+            document.getElementById('meanRangeText').textContent = meanRange.toFixed(2);
+
+            document.getElementById('uclXText').textContent = uclX.toFixed(2);
+            document.getElementById('clXText').textContent = grandMean.toFixed(2);
+            document.getElementById('lclXText').textContent = lclX.toFixed(2);
+
+            document.getElementById('uclRText').textContent = uclR.toFixed(2);
+            document.getElementById('clRText').textContent = meanRange.toFixed(2);
+            document.getElementById('lclRText').textContent = lclR.toFixed(2);
+
+            // Update Footer Sums
+            document.getElementById('sumXBarFooter').textContent = sumXBar.toFixed(2);
+            document.getElementById('sumRFooter').textContent = sumR.toFixed(2);
+
+            // Diagnostic Rules Check
+            performDiagnosticCheck(xBarList, rList, grandMean, meanRange, uclX, lclX, uclR, lclR);
+
+            // Update Chart.js Charts
+            updateCharts(xBarList, rList, grandMean, meanRange, uclX, lclX, uclR, lclR);
+        }
+
+        // Quality Rules & Diagnostics (According to Document Page 20-21)
+        function performDiagnosticCheck(xBarList, rList, grandMean, meanRange, uclX, lclX, uclR, lclR) {
+            const anomalies = [];
+
+            // 1. Out of Control Check (จุดอยู่นอกขอบเขตควบคุม)
+            xBarList.forEach((val, idx) => {
+                if (val > uclX || val < lclX) {
+                    anomalies.push(`กลุ่มที่ ${idx + 1}: ค่าเฉลี่ย (X̄ = ${val.toFixed(2)}) หลุดขอบเขตควบคุม (X̄-Chart)`);
+                }
+            });
+
+            rList.forEach((val, idx) => {
+                if (val > uclR || val < lclR) {
+                    anomalies.push(`กลุ่มที่ ${idx + 1}: ค่าพิสัย (R = ${val.toFixed(2)}) หลุดขอบเขตควบคุม (R-Chart)`);
+                }
+            });
+
+            // 2. Run Check (7 จุดติดกันอยู่ฝั่งเดียวกันของเส้นกลาง)
+            let consecutiveAboveX = 0, consecutiveBelowX = 0;
+            for (let i = 0; i < xBarList.length; i++) {
+                if (xBarList[i] > grandMean) {
+                    consecutiveAboveX++;
+                    consecutiveBelowX = 0;
+                } else if (xBarList[i] < grandMean) {
+                    consecutiveBelowX++;
+                    consecutiveAboveX = 0;
+                } else {
+                    consecutiveAboveX = 0;
+                    consecutiveBelowX = 0;
+                }
+
+                if (consecutiveAboveX >= 7 || consecutiveBelowX >= 7) {
+                    anomalies.push(`พบการเกิด Run ใน X̄-Chart (มีจุดต่อเนื่องกัน 7 จุดขึ้นไปบนฝั่งเดียวกันของเส้นเฉลี่ย)`);
+                    break;
+                }
+            }
+
+            // 3. Trend Check (7 จุดเพิ่มขึ้นหรือลดลงต่อเนื่องกัน)
+            let incCount = 1, decCount = 1;
+            for (let i = 1; i < xBarList.length; i++) {
+                if (xBarList[i] > xBarList[i - 1]) {
+                    incCount++;
+                    decCount = 1;
+                } else if (xBarList[i] < xBarList[i - 1]) {
+                    decCount++;
+                    incCount = 1;
+                } else {
+                    incCount = 1;
+                    decCount = 1;
+                }
+
+                if (incCount >= 7 || decCount >= 7) {
+                    anomalies.push(`พบแนวโน้ม (Trend) ผิดปกติใน X̄-Chart (เพิ่มขึ้นหรือลดลงต่อเนื่องกัน 7 จุด)`);
+                    break;
+                }
+            }
+
+            // UI Alert Banner Rendering
+            const banner = document.getElementById('diagnosticBanner');
+            const icon = document.getElementById('diagnosticIcon');
+            const title = document.getElementById('diagnosticTitle');
+            const desc = document.getElementById('diagnosticDesc');
+
+            if (anomalies.length === 0) {
+                banner.className = "p-4 rounded-2xl border transition-all duration-300 flex items-start gap-3 bg-emerald-50 border-emerald-200 text-emerald-900";
+                icon.className = "w-6 h-6 text-emerald-600 shrink-0 mt-0.5";
+                title.textContent = "กระบวนการผลิตอยู่ในเกณฑ์ควบคุมปกติ (In Control)";
+                desc.textContent = "จุดข้อมูลทั้งหมดอยู่ภายในขอบเขตควบคุม (Control Limits) และไม่พบลักษณะการจัดวางตัวที่ผิดปกติ เช่น Run หรือ Trend";
+            } else {
+                banner.className = "p-4 rounded-2xl border transition-all duration-300 flex items-start gap-3 bg-rose-50 border-rose-200 text-rose-900";
+                icon.className = "w-6 h-6 text-rose-600 shrink-0 mt-0.5";
+                title.textContent = `พบความผิดปกติในกระบวนการผลิต (${anomalies.length} รายการ)`;
+                desc.innerHTML = `<ul class="list-disc list-inside space-y-1 mt-1 font-medium">${anomalies.map(a => `<li>${a}</li>`).join('')}</ul>`;
+            }
+        }
+
+        function updateCharts(xBarList, rList, grandMean, meanRange, uclX, lclX, uclR, lclR) {
+            const labels = tableData.map((_, i) => `${i + 1}`);
+
+            // Update X-Bar Chart
+            xBarChartInstance.data.labels = labels;
+            xBarChartInstance.data.datasets[0].data = xBarList;
+            xBarChartInstance.data.datasets[1].data = new Array(labels.length).fill(uclX);
+            xBarChartInstance.data.datasets[2].data = new Array(labels.length).fill(grandMean);
+            xBarChartInstance.data.datasets[3].data = new Array(labels.length).fill(lclX);
+
+            // Highlight Out of Control Points in Red
+            xBarChartInstance.data.datasets[0].pointBackgroundColor = xBarList.map(v => (v > uclX || v < lclX) ? '#ef4444' : '#2563eb');
+            xBarChartInstance.data.datasets[0].pointRadius = xBarList.map(v => (v > uclX || v < lclX) ? 6 : 4);
+            xBarChartInstance.update();
+
+            // Update R Chart
+            rChartInstance.data.labels = labels;
+            rChartInstance.data.datasets[0].data = rList;
+            rChartInstance.data.datasets[1].data = new Array(labels.length).fill(uclR);
+            rChartInstance.data.datasets[2].data = new Array(labels.length).fill(meanRange);
+            rChartInstance.data.datasets[3].data = new Array(labels.length).fill(lclR);
+
+            rChartInstance.data.datasets[0].pointBackgroundColor = rList.map(v => (v > uclR || v < lclR) ? '#ef4444' : '#4f46e5');
+            rChartInstance.data.datasets[0].pointRadius = rList.map(v => (v > uclR || v < lclR) ? 6 : 4);
+            rChartInstance.update();
+        }
+    </script>
+</body>
+</html>
